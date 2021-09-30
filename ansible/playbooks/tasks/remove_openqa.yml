@@ -1,8 +1,44 @@
 ---
-- name: Uninstall OpenQA packages
-  yum:
-    name: "{{ openqa_packages }}"
+- name: Stop OpenQA workers
+  ansible.builtin.systemd:
+    name: "openqa-worker@{{ item }}"
+    state: stopped
+    enabled: false
+  # range 'end' parameter is exclusive, so add 1
+  loop: "{{ range(1, (openqa_worker_count|int + 1)) | list }}"
+  tags: start_workers
+
+- name: Deny traffic for services
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    permanent: true
+    state: disabled
+  loop:
+    - http
+    - openqa-vnc
+
+- name: Remove openqa-vnc firewalld service
+  file:
+    path: /etc/firewalld/services/openqa-vnc.xml
     state: absent
+
+- name: Reload FirewallD
+  systemd:
+    name: firewalld
+    state: reloaded
+
+- name: Disable and stop OpenQA services
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop: "{{ openqa_services_uninstall }}"
+
+- name: Disable httpd_can_network_connect
+  seboolean:
+    name: httpd_can_network_connect
+    state: false
+    persistent: true
 
 - name: Delete OpenQA files and directories
   file:
@@ -15,28 +51,7 @@
     - /etc/httpd/conf.d/openqa.conf
     - /etc/httpd/conf.d/openqa-ssl.conf
 
-- name: Disable httpd_can_network_connect
-  seboolean:
-    name: httpd_can_network_connect
-    state: false
-    persistent: true
-
-- name: Deny traffic for services
-  ansible.posix.firewalld:
-    service: "{{ item }}"
-    permanent: true
-    state: disabled
-  loop:
-    - http
-    - openqa-vnc
-
-- name: Deny VNC traffic for local workers
-  ansible.posix.firewalld:
-    port: "{{ openqa_min_vnc_port }}-{{ openqa_max_vnc_port }}/tcp"
-    permanent: true
-    state: disabled
-
-- name: Reload FirewallD
-  systemd:
-    name: firewalld
-    state: reloaded
+- name: Uninstall OpenQA packages
+  yum:
+    name: "{{ openqa_packages_uninstall }}"
+    state: absent

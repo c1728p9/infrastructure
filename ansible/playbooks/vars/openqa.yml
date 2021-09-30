@@ -56,6 +56,13 @@ openqa_packages:
   - postgresql-server
   - perl-REST-Client
 
+# Packages to uninstall when removing openqa
+openqa_packages_uninstall:
+  - openqa
+  - openqa-httpd
+  - openqa-worker
+  - postgresql-server
+
 # Services to start and enable
 openqa_services:
   - sshd
@@ -65,4 +72,14 @@ openqa_services:
   - openqa-websockets
   - openqa-webui
   - fm-consumer@fedora_openqa_scheduler
+
+# Services to stop and disable when removing openqa
+openqa_services_uninstall:
+  - fm-consumer@fedora_openqa_scheduler
+  - openqa-webui
+  - openqa-websockets
+  - openqa-scheduler
+  - openqa-gru
+  - httpd
+  # sshd intentionally left enabled
 ...
